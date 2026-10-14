@@ -24,14 +24,13 @@ CI covers PHP 8.2–8.5 with Symfony 6.4, 7.4, 8.0 and 8.1, plus a lowest-depend
 
 ## Installation
 
-Install the stable `1.0` series directly from this repository:
+FormSummaryBundle is available on [Packagist](https://packagist.org/packages/alkin/form-summary-bundle). Install the stable `1.x` series with Composer:
 
 ```bash
-composer config repositories.form-summary vcs https://github.com/alkinbg/FormSummaryBundle
 composer require "alkin/form-summary-bundle:^1.0"
 ```
 
-These instructions use the repository's version tag and do not require a Packagist listing.
+No custom Composer repository configuration is needed when Packagist is enabled.
 
 Register the bundle in `config/bundles.php`:
 
