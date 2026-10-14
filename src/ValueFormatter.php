@@ -60,8 +60,16 @@ final class ValueFormatter
     public function money(FormView $view): ?string
     {
         $value = $this->plain($view);
+        if (null === $value) {
+            return null;
+        }
 
-        return null === $value ? null : str_replace('{{ widget }}', $value, $view->vars['money_pattern'] ?? '{{ widget }}');
+        $pattern = $view->vars['money_pattern'] ?? '{{ widget }}';
+        if (!\is_string($pattern)) {
+            throw new \UnexpectedValueException('A money field must have a string money_pattern.');
+        }
+
+        return str_replace('{{ widget }}', $value, $pattern);
     }
 
     public function percent(FormView $view): ?string
