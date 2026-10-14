@@ -1,0 +1,36 @@
+{
+    "name": "alkin/form-summary-bundle",
+    "description": "Read-only summaries for Symfony Forms using existing labels, choices and view data.",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "authors": [{"name": "Alkin Fehim", "email": "alkinbg@gmail.com"}],
+    "keywords": ["symfony", "form", "summary", "twig", "read-only"],
+    "require": {
+        "php": ">=8.2",
+        "symfony/config": "^6.4 || ^7.4 || ^8.0",
+        "symfony/dependency-injection": "^6.4 || ^7.4 || ^8.0",
+        "symfony/form": "^6.4 || ^7.4 || ^8.0",
+        "symfony/framework-bundle": "^6.4 || ^7.4 || ^8.0",
+        "symfony/http-kernel": "^6.4 || ^7.4 || ^8.0",
+        "symfony/options-resolver": "^6.4 || ^7.4 || ^8.0",
+        "symfony/translation-contracts": "^3.0",
+        "symfony/twig-bridge": "^6.4 || ^7.4 || ^8.0",
+        "symfony/twig-bundle": "^6.4 || ^7.4 || ^8.0",
+        "twig/twig": "^3.15"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "phpstan/phpstan": "^2.1",
+        "symfony/security-csrf": "^6.4 || ^7.4 || ^8.0",
+        "symfony/translation": "^6.4 || ^7.4 || ^8.0"
+    },
+    "autoload": {"psr-4": {"Alkin\\FormSummaryBundle\\": "src/"}},
+    "autoload-dev": {"psr-4": {"Alkin\\FormSummaryBundle\\Tests\\": "tests/"}},
+    "config": {"sort-packages": true},
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse --no-progress",
+        "lint": "find src tests translations -name '*.php' -print0 | xargs -0 -n1 php -l",
+        "qa": ["@test", "@analyse", "@lint"]
+    }
+}

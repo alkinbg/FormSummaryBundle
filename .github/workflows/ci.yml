@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php }} / Symfony ${{ matrix.symfony }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { php: '8.2', symfony: '6.4.*' }
+          - { php: '8.3', symfony: '7.4.*' }
+          - { php: '8.4', symfony: '8.0.*' }
+          - { php: '8.4', symfony: '8.1.*' }
+          - { php: '8.5', symfony: '8.1.*' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: intl, mbstring, dom, xml
+          coverage: none
+          tools: composer:v2
+      - run: composer validate --strict
+      - name: Select Symfony version
+        env:
+          SYMFONY_VERSION: ${{ matrix.symfony }}
+        run: |
+          php <<'PHP'
+          <?php
+          $config = json_decode(file_get_contents('composer.json'), true, 512, JSON_THROW_ON_ERROR);
+          foreach (['require', 'require-dev'] as $section) {
+              foreach (array_keys($config[$section]) as $package) {
+                  if (str_starts_with($package, 'symfony/') && !str_ends_with($package, '-contracts')) {
+                      $config[$section][$package] = getenv('SYMFONY_VERSION');
+                  }
+              }
+          }
+          file_put_contents('composer.json', json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n");
+          PHP
+      - run: composer update --no-interaction --prefer-dist --no-progress
+      - run: composer test
+      - run: composer analyse
+      - run: composer lint
