@@ -1,0 +1,44 @@
+name: Bug report
+description: Report incorrect behavior or a regression in FormSummaryBundle.
+title: "[Bug]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Explain the actual result and the expected result.
+      placeholder: The summary renders ... but I expected ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Provide the relevant FormType options, Twig call, and steps. Remove secrets and personal data.
+      placeholder: |
+        1. Create a form with ...
+        2. Render it using ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: bundle-version
+    attributes:
+      label: Bundle version
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: PHP and Symfony versions
+      placeholder: PHP 8.4, Symfony 8.1
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional context
+      description: Include any safe error output or test results. Do not paste credentials or private form values.
+    validations:
+      required: false

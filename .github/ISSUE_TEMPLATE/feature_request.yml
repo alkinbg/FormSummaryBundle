@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a focused improvement to FormSummaryBundle.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What would you like to accomplish with read-only Symfony form summaries?
+    validations:
+      required: true
+  - type: textarea
+    id: current-approach
+    attributes:
+      label: Current approach and limitations
+      description: Explain how you handle this today and what duplication or limitation remains.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-behavior
+    attributes:
+      label: Proposed behavior
+      description: Show a small PHP or Twig example if that clarifies the suggestion.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include any native Symfony capability or existing bundle feature that you have considered.
+    validations:
+      required: false
