@@ -1,0 +1,98 @@
+{% use 'form_div_layout.html.twig' %}
+
+{% autoescape 'html' %}
+{% block form_summary %}
+    <dl class="form-summary">
+        {%- if compound -%}
+            {%- for child in form -%}
+                {{- form_summary_row(child, {summary_empty: summary_empty}) -}}
+            {%- endfor -%}
+        {%- else -%}
+            {{- form_summary_row(form, {summary_empty: summary_empty}) -}}
+        {%- endif -%}
+    </dl>
+{% endblock %}
+
+{% block form_summary_leaf %}
+    <dl class="form-summary">{{ form_summary_row(form, {summary_empty: summary_empty}) }}</dl>
+{% endblock %}
+
+{% block choice_summary %}{{ block('form_summary_leaf') }}{% endblock %}
+{% block date_summary %}{{ block('form_summary_leaf') }}{% endblock %}
+{% block time_summary %}{{ block('form_summary_leaf') }}{% endblock %}
+{% block datetime_summary %}{{ block('form_summary_leaf') }}{% endblock %}
+
+{% block form_summary_row %}
+    <div class="form-summary__row"><dt>{{ field_label(form) }}</dt><dd>{{ form_summary_value(form, {summary_empty: summary_empty}) }}</dd></div>
+{% endblock %}
+
+{% block form_summary_value %}
+    {%- if compound -%}
+        {{- form_summary(form, {summary_empty: summary_empty}) -}}
+    {%- else -%}
+        {%- set summary_display_value = summary_formatter.text(form) -%}
+        {{- block('form_summary_text') -}}
+    {%- endif -%}
+{% endblock %}
+
+{% block form_summary_text %}
+    {%- if summary_display_value is null or summary_display_value is same as('') -%}
+        {{- summary_empty -}}
+    {%- elseif summary_display_value is same as(true) or summary_display_value is same as(false) -%}
+        {{- (summary_display_value ? 'Yes' : 'No')|trans({}, 'form_summary') -}}
+    {%- elseif summary_formatter.isTranslatable(summary_display_value) -%}
+        {{- summary_display_value|trans -}}
+    {%- else -%}
+        {{- summary_display_value -}}
+    {%- endif -%}
+{% endblock %}
+
+{% block form_summary_custom_value %}{{ block('form_summary_text') }}{% endblock %}
+
+{% block checkbox_summary_value %}{{ (checked ? 'Yes' : 'No')|trans({}, 'form_summary') }}{% endblock %}
+{% block radio_summary_value %}{{ block('checkbox_summary_value') }}{% endblock %}
+
+{% block choice_summary_value %}
+    {%- set summary_choices = summary_formatter.choices(form) -%}
+    {%- if summary_choices is empty -%}
+        {{- summary_empty -}}
+    {%- else -%}
+        {%- if multiple -%}<ul class="form-summary__choices">{%- endif -%}
+        {%- for choice in summary_choices -%}
+            {%- if multiple -%}<li>{%- endif -%}
+            {%- if choice_translation_domain is same as(false) -%}
+                {{- choice.label -}}
+            {%- else -%}
+                {{- choice.label|trans(choice.labelTranslationParameters, choice_translation_domain) -}}
+            {%- endif -%}
+            {%- if multiple -%}</li>{%- endif -%}
+        {%- endfor -%}
+        {%- if multiple -%}</ul>{%- endif -%}
+    {%- endif -%}
+{% endblock %}
+
+{% block money_summary_value %}
+    {%- set summary_display_value = summary_formatter.money(form) -%}
+    {{- block('form_summary_text') -}}
+{% endblock %}
+
+{% block percent_summary_value %}
+    {%- set summary_display_value = summary_formatter.percent(form) -%}
+    {{- block('form_summary_text') -}}
+{% endblock %}
+
+{% block date_summary_value %}
+    {%- set summary_display_value = summary_formatter.date(form) -%}
+    {{- block('form_summary_text') -}}
+{% endblock %}
+
+{% block time_summary_value %}
+    {%- set summary_display_value = summary_formatter.time(form) -%}
+    {{- block('form_summary_text') -}}
+{% endblock %}
+
+{% block datetime_summary_value %}
+    {%- set summary_display_value = summary_formatter.dateTime(form) -%}
+    {{- block('form_summary_text') -}}
+{% endblock %}
+{% endautoescape %}
