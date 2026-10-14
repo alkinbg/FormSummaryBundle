@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -13,22 +14,24 @@ concurrency:
 
 jobs:
   test:
-    name: PHP ${{ matrix.php }} / Symfony ${{ matrix.symfony }}
+    name: PHP ${{ matrix.php }} / Symfony ${{ matrix.symfony }} / ${{ matrix.dependencies }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { php: '8.2', symfony: '6.4.*' }
-          - { php: '8.3', symfony: '7.4.*' }
-          - { php: '8.4', symfony: '8.0.*' }
-          - { php: '8.4', symfony: '8.1.*' }
-          - { php: '8.5', symfony: '8.1.*' }
+          - { php: '8.2', symfony: '6.4.*', dependencies: highest }
+          - { php: '8.3', symfony: '7.4.*', dependencies: highest }
+          - { php: '8.4', symfony: '8.0.*', dependencies: highest }
+          - { php: '8.4', symfony: '8.1.*', dependencies: highest }
+          - { php: '8.5', symfony: '8.1.*', dependencies: highest }
+          - { php: '8.2', symfony: '6.4.*', dependencies: lowest }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: ${{ matrix.php }}
           extensions: intl, mbstring, dom, xml
@@ -51,7 +54,114 @@ jobs:
           }
           file_put_contents('composer.json', json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n");
           PHP
-      - run: composer update --no-interaction --prefer-dist --no-progress
+      - name: Install dependencies
+        env:
+          DEPENDENCIES: ${{ matrix.dependencies }}
+        run: |
+          if [ "$DEPENDENCIES" = lowest ]; then
+            composer update --prefer-lowest --prefer-stable --no-interaction --prefer-dist --no-progress
+          else
+            composer update --no-interaction --prefer-dist --no-progress
+          fi
+      - run: composer audit --locked
       - run: composer test
       - run: composer analyse
       - run: composer lint
+      - name: Check test-order independence
+        if: matrix.php == '8.4' && matrix.symfony == '8.1.*'
+        run: composer test -- --order-by=random --random-order-seed=1014
+
+  distribution:
+    name: Production archive / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.4']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: intl, mbstring, dom, xml
+          coverage: none
+          tools: composer:v2
+      - name: Build an export-ignore distribution
+        run: |
+          mkdir -p "$RUNNER_TEMP/form-summary-package" "$RUNNER_TEMP/form-summary-app"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/form-summary-package"
+          php <<'PHP'
+          <?php
+          $config = [
+              'name' => 'form-summary/installation-smoke',
+              'license' => 'proprietary',
+              'repositories' => [[
+                  'type' => 'path',
+                  'url' => getenv('RUNNER_TEMP').'/form-summary-package',
+                  'options' => ['symlink' => false, 'versions' => ['alkin/form-summary-bundle' => '1.0.0']],
+              ]],
+              'require' => ['alkin/form-summary-bundle' => '1.0.0'],
+              'config' => ['allow-plugins' => false],
+          ];
+          file_put_contents(getenv('RUNNER_TEMP').'/form-summary-app/composer.json', json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+          PHP
+      - name: Install production dependencies only
+        run: composer update --working-dir "$RUNNER_TEMP/form-summary-app" --no-dev --no-scripts --no-plugins --no-interaction --prefer-dist --no-progress
+      - name: Verify the installed application
+        run: |
+          composer check-platform-reqs --no-dev --working-dir "$RUNNER_TEMP/form-summary-app"
+          composer audit --locked --working-dir "$RUNNER_TEMP/form-summary-app"
+          php tests/smoke.php "$RUNNER_TEMP/form-summary-app/vendor/autoload.php"
+
+  tag-release:
+    name: Tag verified release
+    needs: [test, distribution]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'Release ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Create an immutable annotated tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ ! "$RELEASE_MESSAGE" =~ ^Release\ ([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo 'The release commit message must be exactly Release X.Y.Z.' >&2
+            exit 1
+          fi
+          export RELEASE_VERSION="${BASH_REMATCH[1]}"
+          tag="v$RELEASE_VERSION"
+          grep -Fq "## [$RELEASE_VERSION] - " CHANGELOG.md
+          existing=$(gh api "repos/$GH_REPO/git/matching-refs/tags/$tag" --jq ".[] | select(.ref == \"refs/tags/$tag\") | .object.sha")
+          if [ -n "$existing" ]; then
+            target=$(gh api "repos/$GH_REPO/git/tags/$existing" --jq '.object.sha')
+            test "$target" = "$GITHUB_SHA"
+            echo "$tag already points to the verified commit."
+            exit 0
+          fi
+          php <<'PHP' > "$RUNNER_TEMP/release-tag.json"
+          <?php
+          $config = json_decode(file_get_contents('composer.json'), true, 512, JSON_THROW_ON_ERROR);
+          $author = $config['authors'][0];
+          if (!is_string($author['name']) || '' === trim($author['name']) || !filter_var($author['email'], FILTER_VALIDATE_EMAIL)) {
+              throw new RuntimeException('A valid package author is required for the release tag.');
+          }
+          echo json_encode([
+              'tag' => 'v'.getenv('RELEASE_VERSION'),
+              'message' => 'Version '.getenv('RELEASE_VERSION'),
+              'object' => getenv('GITHUB_SHA'),
+              'type' => 'commit',
+              'tagger' => ['name' => $author['name'], 'email' => $author['email'], 'date' => gmdate('Y-m-d\TH:i:s\Z')],
+          ], JSON_THROW_ON_ERROR);
+          PHP
+          object=$(gh api --method POST "repos/$GH_REPO/git/tags" --input "$RUNNER_TEMP/release-tag.json" --jq '.sha')
+          gh api --method POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/$tag" -f "sha=$object" --jq '.ref'
