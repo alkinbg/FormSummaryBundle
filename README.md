@@ -18,16 +18,20 @@ FormSummaryBundle turns a Symfony `FormView` into a read-only description list. 
 
 ## Requirements
 
-PHP 8.2 or later with a compatible Symfony version: Symfony 6.4, 7.4 or 8.x and Twig 3.15 or later. CI covers PHP 8.2–8.5 with Symfony 6.4, 7.4, 8.0 and 8.1. Symfony's own PHP requirements still apply.
+PHP 8.2 or later with a compatible Symfony version: Symfony 6.4, 7.4 or 8.x and Twig 3.15 or later. Symfony's own PHP requirements still apply. Install the current security patches of your chosen dependency versions.
+
+CI covers PHP 8.2–8.5 with Symfony 6.4, 7.4, 8.0 and 8.1, plus a lowest-dependency job and production-archive installation checks. The lowest-dependency job respects Composer's security advisory blocking; it does not deliberately install vulnerable releases.
 
 ## Installation
 
-The package is in development; there is no tagged release or Packagist installation assumed in these instructions. To try the implementation branch in a development application:
+Install the stable `1.0` series directly from this repository:
 
 ```bash
 composer config repositories.form-summary vcs https://github.com/alkinbg/FormSummaryBundle
-composer require alkin/form-summary-bundle:dev-feature/form-summary
+composer require "alkin/form-summary-bundle:^1.0"
 ```
+
+These instructions use the repository's version tag and do not require a Packagist listing.
 
 Register the bundle in `config/bundles.php`:
 
@@ -35,7 +39,7 @@ Register the bundle in `config/bundles.php`:
 Alkin\FormSummaryBundle\FormSummaryBundle::class => ['all' => true],
 ```
 
-Keep the application's existing `FrameworkBundle` and `TwigBundle` registrations. The bundle registers its form extension, Twig functions and default summary theme automatically. No Flex recipe is required or assumed.
+Keep the application's existing `FrameworkBundle` and `TwigBundle` registrations and enable Symfony Forms as usual. The bundle registers its form extension, Twig functions and default summary theme automatically. No Flex recipe is required or assumed.
 
 ## Basic usage
 
@@ -70,7 +74,7 @@ For a confirmation after submission, handle the request and check `$form->isSubm
 
 All three functions accept a `FormView`, including a child view. `form_summary()` includes the outer `<dl>`, `form_summary_row()` produces a `<div>` containing `<dt>` and `<dd>`, and `form_summary_value()` renders only the value.
 
-Summaries do not mark fields as rendered. The same view can be summarized repeatedly, and `form_widget()` or `form_rest()` can still render editable fields afterwards.
+Summaries do not mark fields as rendered. The same view can be summarized repeatedly, before or after displaying the editable form. `form_widget()` and `form_rest()` remain usable afterwards.
 
 ### Empty values
 
@@ -80,7 +84,7 @@ Summaries do not mark fields as rendered. The same view can be summarized repeat
 {{ form_summary(form, {summary_empty: 'Not provided'}) }}
 ```
 
-The placeholder is propagated to nested summaries and escaped as text.
+`summary_empty` must be a string. It is propagated to nested summaries and missing components of partial dates and times, and is escaped as text. An entirely empty date or time displays one placeholder rather than a placeholder for each component. An empty-string placeholder is supported.
 
 ## Excluding fields
 
@@ -90,7 +94,7 @@ $builder->add('internalNote', TextareaType::class, [
 ]);
 ```
 
-Excluding a compound parent excludes its descendants, including attempts to render a child directly through a summary function.
+Excluding a compound parent excludes its descendants, including attempts to render a child directly through a summary function. Excluded child views of expanded choices are also omitted when summarizing the parent choice field.
 
 Password, hidden, button, submit, reset, file and repeated fields are always excluded, including types inheriting from them. Setting `summary: true` or `summary_value` cannot enable them. CSRF tokens are hidden fields and are not included. Repeated fields are deliberately excluded rather than accidentally repeating confirmation values.
 
@@ -112,7 +116,7 @@ $builder->add('reference', TextType::class, [
 
 The closure is evaluated only when that value is summarized, not when the form view is created. It is never evaluated for an excluded field. Rendering again evaluates it again; keep callbacks free of side effects.
 
-Explicit `null` replaces the original value with the empty placeholder. It does not fall back to the original data.
+Explicit `null` replaces the original value with the empty placeholder. It does not fall back to the original data. A custom value on a compound form replaces its child list through all three summary functions.
 
 Values and callback results are escaped. Arbitrary objects, arrays and raw Twig `Markup` are rejected instead of being serialized or stringified. Return a supported value or provide a custom Twig summary block for richer output.
 
@@ -128,9 +132,11 @@ Values and callback results are escaped. Arbitrary objects, arrays and raw Twig 
 | Date, time and datetime | Existing view representation; compound date pattern and time parts are supported |
 | Nested forms and collections | Nested description lists, existing children only; no collection prototype |
 
-The form remains responsible for choices, transformers and time zones. A single-text HTML5 date or datetime retains its configured view format; the bundle does not silently choose a different locale format. Native form creation and choice loading may still perform their usual database queries. This package does not cache, query or serialize entities itself.
+The form remains responsible for choices, transformers and time zones. A single-text HTML5 date or datetime retains its configured view format; the bundle does not silently choose a different locale format. Native form creation and choice loading may still perform their usual database queries. Summary rendering uses the existing choice views and does not reload the choice loader, query entities or serialize model objects itself.
 
-For unsupported compound widgets, supply `summary_value` or a field-specific summary theme block rather than relying on an inferred representation.
+Compound dates and times assemble their standard component view values. Custom values or theme blocks attached to internal components, such as `date.year`, are not composed into the parent's formatted date. Customize the parent date/time field with `summary_value` or its summary theme block instead. Non-scalar date/time component labels require a custom parent representation.
+
+For unsupported compound widgets, supply `summary_value` or a field-specific summary theme block rather than relying on an inferred representation. A field configured with `label: false` retains an empty label in the default summary; provide a suitable label or a custom row theme when a visible heading is needed.
 
 ## Translations
 
@@ -143,7 +149,7 @@ Yes: Oui
 No: Non
 ```
 
-`TranslatableInterface` values, including `TranslatableMessage`, are translated before escaping.
+`TranslatableInterface` values, including `TranslatableMessage`, are translated before escaping. When the application's translator is disabled, the default English boolean labels remain usable.
 
 ## Custom themes
 
@@ -161,13 +167,23 @@ Summary blocks participate in Symfony's native form-theme lookup. Override a fie
 {{ form_summary(form) }}
 ```
 
-The default summary theme is already registered globally, so an override file only needs its changed blocks. A `{% form_theme ... only %}` theme must explicitly include the default summary theme because `only` disables global fallback.
+The default summary theme is registered globally and contains only summary blocks. It does not import or replace the application's editable widget blocks. An override file only needs its changed blocks.
 
-Available suffixes include `summary`, `summary_row` and `summary_value`, for example `choice_summary_value`, `date_summary_value`, or `_booking_reference_summary_value`. A supplied `summary_value` uses `summary_custom_value` instead, so it is not formatted a second time by the original field type.
+A `{% form_theme ... only %}` theme disables global fallback. Include the default summary theme explicitly; also include an editable form theme when the same view will be rendered for editing:
+
+```twig
+{% form_theme form with [
+    'bootstrap_5_layout.html.twig',
+    '@FormSummary/form_summary_layout.html.twig',
+    'form/summary.html.twig'
+] only %}
+```
+
+Available suffixes include `summary`, `summary_row` and `summary_value`, for example `choice_summary_value`, `date_summary_value`, or `_booking_reference_summary_value`. A supplied `summary_value` uses `summary_custom_value` instead, so it is not formatted a second time by the original field type. Override `form_summary_custom_value` or a field-specific equivalent to customize that output.
 
 Default theme classes are `form-summary`, `form-summary__row` and `form-summary__choices`. No stylesheet is injected. Style these classes in the application or override the blocks for a different layout.
 
-The default theme escapes labels even when the form's `label_html` option is enabled. Custom themes are trusted application code; keep escaping enabled and do not apply `raw` to user-provided data.
+The default theme escapes labels even when the form's `label_html` option is enabled, and explicitly enables HTML escaping even when application autoescaping is disabled. Custom themes are trusted application code; keep escaping enabled and do not apply `raw` to user-provided data.
 
 ## Scope and safety
 
@@ -175,15 +191,26 @@ The bundle only displays a form view. It does not persist data, authorize access
 
 Creating a Symfony form view may generate its normal CSRF token. The summary never emits the token. For an application-owned display-only form, the application may explicitly configure CSRF behavior as appropriate; the bundle does not alter it.
 
+The three Twig functions, documented form options and summary theme blocks are the integration API. Classes marked `@internal` are implementation details and are not extension points.
+
 ## Development
+
+From a source checkout:
 
 ```bash
 composer install
 composer validate --strict
 composer qa
+composer audit --locked
 ```
 
-The development suite requires PHP's DOM, XML, mbstring and intl extensions. `composer qa` runs PHPUnit, PHPStan level 8 and PHP syntax checks. CI repeats these checks against the supported PHP/Symfony combinations.
+The development suite requires PHP's DOM, XML, mbstring and intl extensions. `composer qa` runs PHPUnit, PHPStan level 8 and portable PHP syntax checks. Tests fail on warnings, notices, risky tests and deprecations. CI additionally tests randomized execution order, lowest secure dependency versions, and the exported distribution installed in a production-mode Symfony kernel without development dependencies.
+
+Distribution archives omit tests, tools and CI configuration, but include runtime code, templates, translations, the README, changelog and license.
+
+### Releases
+
+Update the changelog and merge a release commit whose message is exactly `Release X.Y.Z` into `main`. After the main-branch test and installation jobs pass, CI creates the annotated `vX.Y.Z` tag using the package author's name and email. An existing tag is never moved to a different commit. Tagging does not publish the package to Packagist.
 
 ## License
 

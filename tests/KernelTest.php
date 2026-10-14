@@ -24,6 +24,7 @@ final class KernelTest extends TestCase
     {
         $kernel = new SummaryKernel('test', true);
         $requestStack = null;
+        $exceptionHandler = self::currentExceptionHandler();
 
         try {
             $kernel->boot();
@@ -54,7 +55,22 @@ final class KernelTest extends TestCase
         } finally {
             $requestStack?->pop();
             $kernel->shutdown();
+
+            // Older FrameworkBundle versions register an exception handler during boot.
+            if (self::currentExceptionHandler() !== $exceptionHandler) {
+                restore_exception_handler();
+            }
         }
+    }
+
+    private static function currentExceptionHandler(): ?callable
+    {
+        $handler = set_exception_handler(static function (\Throwable $exception): never {
+            throw $exception;
+        });
+        restore_exception_handler();
+
+        return $handler;
     }
 }
 
