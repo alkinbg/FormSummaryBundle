@@ -33,7 +33,7 @@ final class KernelTest extends TestCase
             $requestStack = $container->get('request_stack');
             $requestStack->push($request);
 
-            $form = $container->get('form.factory')
+            $form = $container->get('test.form_factory')
                 ->createBuilder(FormType::class, ['name' => 'Alkin', 'confirmed' => true])
                 ->add('name', TextType::class)
                 ->add('confirmed', CheckboxType::class)
@@ -41,7 +41,7 @@ final class KernelTest extends TestCase
             $view = $form->createView();
             self::assertTrue(isset($view['_token']), 'The test must exercise a real CSRF field.');
 
-            $twig = $container->get('twig');
+            $twig = $container->get('test.twig');
             $html = $twig->createTemplate('{{ form_summary(form) }}')->render(['form' => $view]);
             self::assertStringContainsString('Alkin', $html);
             self::assertStringContainsString('Да', $html);
@@ -80,6 +80,10 @@ final class SummaryKernel extends Kernel
                 'translator' => ['fallbacks' => ['en']],
             ]);
             $container->loadFromExtension('twig', ['strict_variables' => true]);
+
+            // Keep services used directly by this controller-free test kernel.
+            $container->setAlias('test.form_factory', 'form.factory')->setPublic(true);
+            $container->setAlias('test.twig', 'twig')->setPublic(true);
         });
     }
 
