@@ -52,6 +52,9 @@ final readonly class SummaryRenderer
 
         $variables['summary_formatter'] = $this->formatter;
         $variables += ['summary_empty' => '—'];
+        if (!\is_string($variables['summary_empty'])) {
+            throw new \InvalidArgumentException('summary_empty must be a string.');
+        }
 
         return $environment->getRuntime(FormRenderer::class)->searchAndRenderBlock($view, $suffix, $variables);
     }

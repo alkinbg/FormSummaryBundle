@@ -41,11 +41,22 @@ final class ValueFormatter
         $selected = \is_array($value) ? $value : (null === $value ? [] : [$value]);
         $result = [];
         $seen = [];
+        $visibleValues = null;
+
+        if ($view->vars['expanded'] ?? false) {
+            $visibleValues = [];
+            foreach ($view->children as $child) {
+                $childValue = $child->vars['value'] ?? null;
+                if (\is_string($childValue) && Visibility::isVisible($child)) {
+                    $visibleValues['value:'.$childValue] = true;
+                }
+            }
+        }
 
         foreach ([$view->vars['preferred_choices'] ?? [], $view->vars['choices'] ?? []] as $choices) {
             foreach ($this->flatten($choices) as $choice) {
                 $key = 'value:'.$choice->value;
-                if (isset($seen[$key]) || !\in_array($choice->value, $selected, true)) {
+                if (isset($seen[$key]) || (null !== $visibleValues && !isset($visibleValues[$key])) || !\in_array($choice->value, $selected, true)) {
                     continue;
                 }
 

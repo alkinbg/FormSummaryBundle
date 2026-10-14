@@ -3,7 +3,7 @@
 {% autoescape 'html' %}
 {% block form_summary %}
     <dl class="form-summary">
-        {%- if compound -%}
+        {%- if compound and not (form.vars.summary_has_custom_value|default(false)) -%}
             {%- for child in form -%}
                 {{- form_summary_row(child, {summary_empty: summary_empty}) -}}
             {%- endfor -%}

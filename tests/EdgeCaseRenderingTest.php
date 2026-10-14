@@ -192,7 +192,7 @@ final class EdgeCaseRenderingTest extends TestCase
             'label_translation_parameters' => ['%name%' => 'Alkin'],
             'translation_domain' => 'booking',
             'choices' => ['ready' => 'r'],
-            'choice_translation_parameters' => ['%name%' => 'Ruse'],
+            'choice_translation_parameters' => ['ready' => ['%name%' => 'Ruse']],
         ])->createView();
         $html = $this->render($view);
         self::assertStringContainsString('Status for Alkin', $html);
