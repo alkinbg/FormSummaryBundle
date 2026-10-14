@@ -77,10 +77,12 @@ final class ValueFormatterTest extends TestCase
     public function testCompoundDateDoesNotReadAnExcludedChild(): void
     {
         $date = new FormView();
-        $date->vars += ['compound' => true, 'date_pattern' => '{{ day }}.{{ month }}.{{ year }}'];
+        $date->vars['compound'] = true;
+        $date->vars['date_pattern'] = '{{ day }}.{{ month }}.{{ year }}';
         foreach (['year' => '2026', 'month' => '10', 'day' => '14'] as $name => $value) {
             $child = new FormView($date);
-            $child->vars += ['value' => $value, 'summary' => 'year' !== $name];
+            $child->vars['value'] = $value;
+            $child->vars['summary'] = 'year' !== $name;
             $date->children[$name] = $child;
         }
 
