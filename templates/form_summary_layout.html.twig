@@ -1,5 +1,3 @@
-{% use 'form_div_layout.html.twig' %}
-
 {% autoescape 'html' %}
 {% block form_summary %}
     <dl class="form-summary">
@@ -82,17 +80,17 @@
 {% endblock %}
 
 {% block date_summary_value %}
-    {%- set summary_display_value = summary_formatter.date(form) -%}
+    {%- set summary_display_value = summary_formatter.date(form, summary_empty) -%}
     {{- block('form_summary_text') -}}
 {% endblock %}
 
 {% block time_summary_value %}
-    {%- set summary_display_value = summary_formatter.time(form) -%}
+    {%- set summary_display_value = summary_formatter.time(form, summary_empty) -%}
     {{- block('form_summary_text') -}}
 {% endblock %}
 
 {% block datetime_summary_value %}
-    {%- set summary_display_value = summary_formatter.dateTime(form) -%}
+    {%- set summary_display_value = summary_formatter.dateTime(form, summary_empty) -%}
     {{- block('form_summary_text') -}}
 {% endblock %}
 {% endautoescape %}

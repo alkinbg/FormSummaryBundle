@@ -90,7 +90,7 @@ final class ValueFormatter
         return null === $value ? null : $value.($view->vars['symbol'] ?? '%');
     }
 
-    public function date(FormView $view): ?string
+    public function date(FormView $view, string $empty = '—'): ?string
     {
         if (!($view->vars['compound'] ?? false)) {
             return $this->plain($view);
@@ -101,13 +101,13 @@ final class ValueFormatter
         foreach (['year', 'month', 'day'] as $name) {
             $value = isset($view->children[$name]) ? $this->plain($view->children[$name]) : null;
             $hasValue = $hasValue || null !== $value;
-            $parts['{{ '.$name.' }}'] = $value ?? '—';
+            $parts['{{ '.$name.' }}'] = $value ?? $empty;
         }
 
         return $hasValue ? strtr($view->vars['date_pattern'] ?? '{{ year }}-{{ month }}-{{ day }}', $parts) : null;
     }
 
-    public function time(FormView $view): ?string
+    public function time(FormView $view, string $empty = '—'): ?string
     {
         if (!($view->vars['compound'] ?? false)) {
             return $this->plain($view);
@@ -122,26 +122,26 @@ final class ValueFormatter
 
             $value = $this->plain($view->children[$name]);
             $hasValue = $hasValue || null !== $value;
-            $parts[] = null === $value ? '—' : str_pad($value, 2, '0', STR_PAD_LEFT);
+            $parts[] = null === $value ? $empty : str_pad($value, 2, '0', STR_PAD_LEFT);
         }
 
         return $hasValue ? implode(':', $parts) : null;
     }
 
-    public function dateTime(FormView $view): ?string
+    public function dateTime(FormView $view, string $empty = '—'): ?string
     {
         if (!($view->vars['compound'] ?? false)) {
             return $this->plain($view);
         }
 
-        $date = isset($view->children['date']) && Visibility::isVisible($view->children['date']) ? $this->date($view->children['date']) : null;
-        $time = isset($view->children['time']) && Visibility::isVisible($view->children['time']) ? $this->time($view->children['time']) : null;
+        $date = isset($view->children['date']) && Visibility::isVisible($view->children['date']) ? $this->date($view->children['date'], $empty) : null;
+        $time = isset($view->children['time']) && Visibility::isVisible($view->children['time']) ? $this->time($view->children['time'], $empty) : null;
 
         if (null === $date && null === $time) {
             return null;
         }
 
-        return ($date ?? '—').' '.($time ?? '—');
+        return ($date ?? $empty).' '.($time ?? $empty);
     }
 
     /**

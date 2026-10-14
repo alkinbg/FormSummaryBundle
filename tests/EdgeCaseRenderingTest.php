@@ -52,7 +52,7 @@ final class EdgeCaseRenderingTest extends TestCase
         $this->twig->addExtension(new TranslationExtension($this->translator));
         $this->twig->addExtension(new FormSummaryExtension(new SummaryRenderer(new ValueFormatter())));
         $this->twig->addRuntimeLoader(new FactoryRuntimeLoader([
-            FormRenderer::class => fn (): FormRenderer => new FormRenderer(new TwigRendererEngine(['@FormSummary/form_summary_layout.html.twig'], $this->twig)),
+            FormRenderer::class => fn (): FormRenderer => new FormRenderer(new TwigRendererEngine(['form_div_layout.html.twig', '@FormSummary/form_summary_layout.html.twig'], $this->twig)),
         ]));
         $this->factory = Forms::createFormFactoryBuilder()->addTypeExtension(new SummaryTypeExtension())->getFormFactory();
     }
